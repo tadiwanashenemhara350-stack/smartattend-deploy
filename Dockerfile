@@ -18,14 +18,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
         RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
         COPY backend/ ./backend/
+        RUN chmod +x /app/backend/start.sh
         RUN python backend/ml/train_model.py
-        RUN cd backend && FORCE_RESEED=true PYTHONPATH=/app/backend python ml/seed_system.py
-        RUN cd backend && PYTHONPATH=/app/backend python -c "from database import SessionLocal; from models import User; from utils import get_password_hash; db=SessionLocal(); not db.query(User).filter_by(email='admin@gmail.com').first() and db.add(User(email='admin@gmail.com', password_hash=get_password_hash('admin1234'), role='super_admin', full_name='System Admin')); db.commit()"
-        RUN cd backend && PYTHONPATH=/app/backend python -c "from database import SessionLocal; from models import User; from utils import get_password_hash; db=SessionLocal(); s=get_password_hash('students1234'); l=get_password_hash('lecturer1234'); db.query(User).filter_by(role='student').update({'password_hash': s}); db.query(User).filter_by(role='lecturer').update({'password_hash': l}); db.commit()"
+
         COPY --from=frontend-build /app/frontend/dist ./frontend/dist
         COPY --from=frontend-build /app/frontend/public ./frontend/public
 
         EXPOSE 10000
 
-        CMD ["sh", "-c", "cd /app/backend && uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+        CMD ["/bin/sh", "/app/backend/start.sh"]
         
