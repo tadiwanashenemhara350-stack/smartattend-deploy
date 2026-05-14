@@ -46,6 +46,8 @@ export default function AdminDashboard() {
     const [systemSettings, setSystemSettings] = useState([]);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [userSearch, setUserSearch] = useState('');
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ old_password: '', new_password: '' });
 
     useEffect(() => {
         if (!token) {
@@ -102,6 +104,29 @@ export default function AdminDashboard() {
             setUsersList(res.data);
         } catch (err) {
             alert(err.response?.data?.detail || "Error adding user");
+        }
+    };
+
+    const handleDeleteUser = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this user? This will also remove their attendance records and enrollments.")) return;
+        try {
+            await api.delete(`/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+            setUsersList(usersList.filter(u => u.id !== id));
+            alert("User deleted successfully");
+        } catch (err) {
+            alert(err.response?.data?.detail || "Error deleting user");
+        }
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/users/change-password', passwordForm, { headers: { Authorization: `Bearer ${token}` } });
+            alert("Password updated successfully!");
+            setIsChangingPassword(false);
+            setPasswordForm({ old_password: '', new_password: '' });
+        } catch (err) {
+            alert(err.response?.data?.detail || "Error updating password");
         }
     };
 
@@ -470,7 +495,7 @@ export default function AdminDashboard() {
                             </div>
                             <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead><tr style={{ color: '#64748b', fontSize: '0.8rem' }}><th style={{ padding: '1rem' }}>FULL NAME</th><th style={{ padding: '1rem' }}>ROLE</th><th style={{ padding: '1rem' }}>IDENTIFIER</th><th style={{ padding: '1rem' }}>STATUS</th></tr></thead>
+                                    <thead><tr style={{ color: '#64748b', fontSize: '0.8rem' }}><th style={{ padding: '1rem' }}>FULL NAME</th><th style={{ padding: '1rem' }}>ROLE</th><th style={{ padding: '1rem' }}>IDENTIFIER</th><th style={{ padding: '1rem' }}>STATUS</th><th style={{ padding: '1rem' }}>ACTIONS</th></tr></thead>
                                     <tbody>
                                         {usersList.filter(u => u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase()) || u.student_reg_number?.toLowerCase().includes(userSearch.toLowerCase())).map(u => (
                                             <tr key={u.id} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
@@ -478,6 +503,11 @@ export default function AdminDashboard() {
                                                 <td style={{ padding: '1rem' }}><span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', background: u.role === 'student' ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)', color: u.role === 'student' ? '#3b82f6' : '#10b981' }}>{u.role.toUpperCase()}</span></td>
                                                 <td style={{ padding: '1rem', color: '#94a3b8' }}>{u.email || u.student_reg_number || u.lecturer_id}</td>
                                                 <td style={{ padding: '1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active ? '#10b981' : '#ef4444' }}></div> {u.is_active ? 'Active' : 'Disabled'}</div></td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {u.role !== 'super_admin' && (
+                                                        <Trash2 size={18} color="#ef4444" style={{ cursor: 'pointer' }} onClick={() => handleDeleteUser(u.id)} />
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -554,6 +584,34 @@ export default function AdminDashboard() {
                                     <button onClick={handleSaveSettings} disabled={isSavingSettings} style={{ padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>
                                         {isSavingSettings ? 'Saving...' : 'Save All Changes'}
                                     </button>
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(15, 23, 42, 0.3)', padding: '2.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <h3 style={{ marginBottom: '1.5rem' }}>Security</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <p style={{color: '#94a3b8', fontSize: '0.85rem'}}>Update your administrative password.</p>
+                                    <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <input 
+                                            type="password" 
+                                            placeholder="Current Password" 
+                                            value={passwordForm.old_password} 
+                                            onChange={e => setPasswordForm({...passwordForm, old_password: e.target.value})}
+                                            style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px' }} 
+                                            required 
+                                        />
+                                        <input 
+                                            type="password" 
+                                            placeholder="New Password" 
+                                            value={passwordForm.new_password} 
+                                            onChange={e => setPasswordForm({...passwordForm, new_password: e.target.value})}
+                                            style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px' }} 
+                                            required 
+                                        />
+                                        <button type="submit" style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                            Update Password
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>

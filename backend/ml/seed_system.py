@@ -139,7 +139,7 @@ def run_seed():
                     student = User(
                         role="student",
                         email=f"{stud_id.lower()}@msu.edu",
-                        password_hash=get_password_hash("students1234"),
+                        password_hash=get_password_hash("student1234"),
                         full_name=stud_name,
                         student_reg_number=stud_id,
                         faculty="Data Science",

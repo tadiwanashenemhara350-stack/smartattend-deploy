@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { LogOut, QrCode, PlayCircle, AlertTriangle, Users, FileText, UserCircle, Bell, MessageSquare, Send, ShieldAlert, CheckCircle } from 'lucide-react';
+import { LogOut, QrCode, PlayCircle, AlertTriangle, Users, FileText, UserCircle, Bell, MessageSquare, Send, ShieldAlert, CheckCircle, Key } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import api from '../lib/api';
@@ -39,6 +39,11 @@ export default function LecturerDashboard() {
     // Session State
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [activeSessionCode, setActiveSessionCode] = useState(null);
+
+    // Password State
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [oldPassword, setOldPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
 
     useEffect(() => {
         if (!token || !userId) {
@@ -105,6 +110,21 @@ export default function LecturerDashboard() {
             setFeedbackTarget(null);
         } catch (err) {
             alert("Failed to send feedback.");
+        }
+    };
+
+    const handleChangePassword = async () => {
+        try {
+            await api.post('/users/change-password', {
+                old_password: oldPassword,
+                new_password: newPassword
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            alert("Password changed successfully.");
+            setShowPasswordModal(false);
+            setOldPassword("");
+            setNewPassword("");
+        } catch (err) {
+            alert(err.response?.data?.detail || "Failed to change password.");
         }
     };
 
@@ -194,6 +214,7 @@ export default function LecturerDashboard() {
                         <div style={{ width: '8px', height: '8px', background: '#3b82f6', borderRadius: '50%' }}></div>
                         <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>{lecturerName}</span>
                     </div>
+                    <Key size={18} color="#94a3b8" style={{ cursor: 'pointer' }} onClick={() => setShowPasswordModal(true)} />
                     <LogOut size={20} color="#94a3b8" style={{ cursor: 'pointer' }} onClick={logout} />
                 </div>
             </header>
@@ -350,6 +371,28 @@ export default function LecturerDashboard() {
                                 <button onClick={handleSendFeedback} style={{ flex: 2, padding: '12px', borderRadius: '12px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}>
                                     <Send size={18} /> Send Communication
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPasswordModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div style={{ background: '#1e293b', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem' }}>Security Settings</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#94a3b8' }}>Current Password</label>
+                                <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#94a3b8' }}>New Password</label>
+                                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>Cancel</button>
+                                <button onClick={handleChangePassword} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Update Password</button>
                             </div>
                         </div>
                     </div>
