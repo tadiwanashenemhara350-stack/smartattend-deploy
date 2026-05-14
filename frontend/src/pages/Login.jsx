@@ -21,6 +21,15 @@ export default function Login() {
     const [systemInitialized, setSystemInitialized] = useState(true);
 
     useEffect(() => {
+        // Auto-redirect if already logged in
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        if (token && role) {
+            const dashboardRoute = role === 'super_admin' ? 'admin' : role;
+            navigate(`/${dashboardRoute}`);
+            return;
+        }
+
         const checkStatus = async () => {
             try {
                 const res = await api.get('/auth/status');
@@ -30,7 +39,7 @@ export default function Login() {
             }
         };
         checkStatus();
-    }, []);
+    }, [navigate]);
 
     const handleInit = async (e) => {
         e.preventDefault();
