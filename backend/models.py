@@ -51,9 +51,9 @@ class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
 
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("users.id"))
-    course_id = Column(Integer, ForeignKey("courses.id"))
-    session_id = Column(Integer, ForeignKey("module_sessions.id"), nullable=True)
+    student_id = Column(Integer, ForeignKey("users.id"), index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), index=True)
+    session_id = Column(Integer, ForeignKey("module_sessions.id"), index=True, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     check_in_time = Column(String, nullable=True)
     status = Column(String, default="Present")
@@ -77,8 +77,8 @@ class SystemSetting(Base):
 class Enrollment(Base):
     __tablename__ = "enrollments"
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("users.id"))
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    student_id = Column(Integer, ForeignKey("users.id"), index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), index=True)
     
     student = relationship("User", foreign_keys=[student_id])
     course = relationship("Course", foreign_keys=[course_id])

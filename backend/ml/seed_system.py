@@ -4,14 +4,14 @@ import csv
 from datetime import datetime
 
 # Adjust path so we can import from backend
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from database import engine, Base, SessionLocal
 from sqlalchemy import text
 from models import User, Course, ModuleSession, AttendanceRecord, Enrollment, Programme, SystemSetting
 from utils import get_password_hash
 
-DATA_CSV_PATH = os.path.join(os.path.dirname(__file__), "backend", "ml", "msu_attendance_2026_cleaned_complete.csv")
+DATA_CSV_PATH = os.path.join(os.path.dirname(__file__), "msu_attendance_2026_cleaned_complete.csv")
 
 def run_seed():
     # 1. Initial check (Optional skip)
@@ -203,12 +203,20 @@ def run_seed():
                 if not hasattr(students[stud_id], "_sessions_attended"):
                     students[stud_id]._sessions_attended = set()
                 if session_key not in students[stud_id]._sessions_attended:
+                    # Parse timestamp
+                    try:
+                        dt_str = f"{date_val} {check_in_time if check_in_time else '08:00'}"
+                        record_timestamp = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    except:
+                        record_timestamp = datetime.utcnow()
+
                     record = AttendanceRecord(
                         student_id=students[stud_id].id,
                         course_id=courses[module].id,
                         session_id=sessions[session_key].id,
                         check_in_time=check_in_time,
-                        status=attendance
+                        status=attendance,
+                        timestamp=record_timestamp
                     )
                     db.add(record)
                     students[stud_id]._sessions_attended.add(session_key)
@@ -246,12 +254,19 @@ def run_seed():
                     status = random.choices(["Present", "Absent", "Late"], weights=[80, 10, 10])[0]
                     check_in = "08:15" if status in ["Present", "Late"] else None
                     
+                    try:
+                        dt_str = f"{session_obj.date} {check_in if check_in else '08:00'}"
+                        record_timestamp = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    except:
+                        record_timestamp = datetime.utcnow()
+
                     record = AttendanceRecord(
                         student_id=student_obj.id,
                         course_id=session_obj.course_id,
                         session_id=session_obj.id,
                         check_in_time=check_in,
-                        status=status
+                        status=status,
+                        timestamp=record_timestamp
                     )
                     db.add(record)
                     student_obj._sessions_attended.add(session_key)
