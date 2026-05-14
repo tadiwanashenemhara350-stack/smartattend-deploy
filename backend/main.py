@@ -23,13 +23,24 @@ app = FastAPI(title="ML Attendance Management System API")
 def startup_event():
     # Run seeding in a background thread to avoid blocking the port binding
     # Render kills the deploy if the port isn't opened quickly.
-    if os.getenv("FORCE_RESEED") == "true":
-        print("FORCE_RESEED detected. Starting background seeding...")
+    from database import SessionLocal
+    from models import User
+    
+    db = SessionLocal()
+    try:
+        user_count = db.query(User).count()
+    except:
+        user_count = 0
+    finally:
+        db.close()
+
+    if os.getenv("FORCE_RESEED") == "true" or user_count < 10:
+        print(f"Initial setup or FORCE_RESEED detected (Users: {user_count}). Starting background seeding...")
         thread = threading.Thread(target=run_seed)
         thread.daemon = True
         thread.start()
     else:
-        print("Background seeding skipped (FORCE_RESEED not set).")
+        print(f"Database already populated (Users: {user_count}). Skipping auto-seed.")
 
 app.add_middleware(
     CORSMiddleware,
