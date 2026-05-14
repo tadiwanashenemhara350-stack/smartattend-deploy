@@ -273,8 +273,8 @@ export default function AdminDashboard() {
                 
                 {activeTab === 'overview' && (
                     <>
-                        <div style={{ color: '#3b82f6', fontWeight: '700', fontSize: '0.85rem', marginBottom: '4px', letterSpacing: '1px' }}>MIDLANDS STATE UNIVERSITY</div>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 2rem 0' }}>Data Science Hub - 2026</h1>
+                        <div style={{ color: '#3b82f6', fontWeight: '700', fontSize: '0.85rem', marginBottom: '4px', letterSpacing: '1px' }}>SYSTEM HUB</div>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 2rem 0' }}>MIDLANDS STATE UNIVERSITY</h1>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                             {[
                                 { label: 'Students', val: systemStats.students, color: '#3b82f6' },
