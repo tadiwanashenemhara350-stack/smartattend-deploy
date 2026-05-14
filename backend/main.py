@@ -62,6 +62,23 @@ app.include_router(feedback.router)
 def health_check():
     return {"status": "ok"}
 
+@app.get("/seed-status")
+def seed_status():
+    from ml.seed_system import seeding_status
+    return seeding_status
+
+@app.post("/trigger-seed")
+def trigger_seed():
+    """Admin endpoint to manually trigger reseeding."""
+    from ml.seed_system import run_seed, seeding_status
+    if seeding_status.get("running"):
+        return {"message": "Seeding already in progress", "status": seeding_status}
+    import threading
+    os.environ["FORCE_RESEED"] = "true"
+    t = threading.Thread(target=run_seed, daemon=True)
+    t.start()
+    return {"message": "Seeding triggered in background. Poll /seed-status for progress."}
+
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt(request: Request):
     body = "\n".join([
