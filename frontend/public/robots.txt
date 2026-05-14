@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://smartattend-8xl0.onrender.com/sitemap.xml
