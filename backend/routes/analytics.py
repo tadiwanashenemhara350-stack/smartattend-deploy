@@ -309,16 +309,16 @@ def get_system_overview(db: Session = Depends(get_db)):
     live_sessions_count = db.query(models.ModuleSession).count() 
     
     # REAL HOURLY TREND: Group attendance records by hour
-    # We use SQLite strftime to extract the hour from the timestamp
-    from sqlalchemy import func
+    # Use SQLAlchemy extract to work across SQLite and PostgreSQL
+    from sqlalchemy import func, extract
     trend_query = db.query(
-        func.strftime('%H:00', models.AttendanceRecord.timestamp).label('hour'),
+        extract('hour', models.AttendanceRecord.timestamp).label('hour'),
         func.count(models.AttendanceRecord.id).label('count')
-    ).group_by('hour').all()
+    ).group_by('hour').order_by('hour').all()
     
     # Sort and format for frontend (expecting labels: [], data: [])
-    labels = [row.hour for row in trend_query]
-    data = [row.count for row in trend_query]
+    labels = [f"{int(row.hour):02d}:00" for row in trend_query if row.hour is not None]
+    data = [row.count for row in trend_query if row.hour is not None]
 
     # If no data, provide a fallback matching MSU typical hours
     if not labels:
