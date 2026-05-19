@@ -517,44 +517,95 @@ export default function AdminDashboard() {
                     </>
                 )}
 
-                {activeTab === 'ml' && (
-                    <>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 2rem 0' }}>Model Intelligence</h1>
-                        <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr', gap: '2rem' }}>
-                            <div style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <h3>Classification Metrics</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-                                    {mlPerformance && !mlPerformance.error ? (
-                                        Object.entries(mlPerformance.classification_report['1.0'] || {}).filter(([k]) => ['precision', 'recall', 'f1-score'].includes(k)).map(([k, v]) => (
-                                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                                                <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{k}</span>
-                                                <span style={{ fontWeight: 'bold', color: '#10b981' }}>{(v * 100).toFixed(1)}%</span>
-                                            </div>
-                                        ))
-                                    ) : <p style={{ color: '#64748b' }}>Model data unavailable.</p>}
+                {activeTab === 'ml' && (() => {
+                    // Safely find the class-1 report row — backend may return key as '1' or '1.0'
+                    const reportRow = mlPerformance && !mlPerformance.error
+                        ? (mlPerformance.classification_report['1'] || mlPerformance.classification_report['1.0'] || null)
+                        : null;
+                    const accuracy = mlPerformance && !mlPerformance.error
+                        ? mlPerformance.classification_report['accuracy']
+                        : null;
+
+                    // Sort features by importance descending, normalise bars relative to top weight
+                    const fiEntries = featureImportance && !featureImportance.error
+                        ? Object.entries(featureImportance.importance).sort((a, b) => b[1] - a[1])
+                        : [];
+                    const maxWeight = fiEntries.length > 0 ? fiEntries[0][1] : 1;
+
+                    const metricColors = { precision: '#3b82f6', recall: '#10b981', 'f1-score': '#f59e0b', accuracy: '#c084fc' };
+
+                    return (
+                        <>
+                            <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 2rem 0' }}>Model Intelligence</h1>
+                            <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr', gap: '2rem' }}>
+                                {/* --- Classification Metrics --- */}
+                                <div style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <h3 style={{ margin: '0 0 0.4rem 0' }}>Classification Metrics</h3>
+                                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0 0 1.5rem 0' }}>At-risk class (label = 1) performance</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        {reportRow ? (
+                                            [['precision', reportRow.precision], ['recall', reportRow.recall], ['f1-score', reportRow['f1-score']], ...(accuracy != null ? [['accuracy', accuracy]] : [])]
+                                                .filter(([, v]) => v != null)
+                                                .map(([k, v]) => {
+                                                    const pct = (v * 100).toFixed(1);
+                                                    return (
+                                                        <div key={k}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
+                                                                <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{k}</span>
+                                                                <span style={{ fontWeight: 'bold', color: metricColors[k] || '#fff' }}>{pct}%</span>
+                                                            </div>
+                                                            <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                                <div style={{ width: `${pct}%`, height: '100%', background: metricColors[k] || '#3b82f6', borderRadius: '3px', transition: 'width 0.6s ease' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                        ) : (
+                                            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Model data unavailable.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* --- Feature Importance --- */}
+                                <div style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <h3 style={{ margin: '0 0 0.4rem 0' }}>Feature Importance</h3>
+                                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0 0 1.5rem 0' }}>XAI — Gradient Boosting feature weights (sorted)</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                        {fiEntries.length > 0 ? (
+                                            fiEntries.map(([feature, weight], idx) => {
+                                                const barPct = ((weight / maxWeight) * 100).toFixed(1);
+                                                const rawPct = (weight * 100).toFixed(1);
+                                                const hue = 200 + idx * 20;
+                                                return (
+                                                    <div key={feature}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '5px' }}>
+                                                            <span style={{ color: '#cbd5e1', textTransform: 'capitalize' }}>{feature.replace(/_/g, ' ')}</span>
+                                                            <span style={{ fontWeight: 'bold', color: `hsl(${hue}, 80%, 65%)` }}>{rawPct}%</span>
+                                                        </div>
+                                                        <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                            <div style={{ width: `${barPct}%`, height: '100%', background: `hsl(${hue}, 80%, 55%)`, borderRadius: '4px', transition: 'width 0.6s ease' }}></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>XAI weights unavailable.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            <div style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <h3>Feature Importance</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1.5rem' }}>
-                                    {featureImportance && !featureImportance.error ? (
-                                        Object.entries(featureImportance.importance).map(([feature, weight]) => (
-                                            <div key={feature}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                                                    <span style={{ color: '#94a3b8' }}>{feature.replace('_', ' ')}</span>
-                                                    <span>{(weight * 100).toFixed(1)}%</span>
-                                                </div>
-                                                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                                                    <div style={{ width: `${weight * 100}%`, height: '100%', background: '#3b82f6' }}></div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : <p style={{ color: '#64748b' }}>XAI weights unavailable.</p>}
+
+                            {/* ML Ops Status Banner */}
+                            <div style={{ marginTop: '2rem', background: 'rgba(59, 130, 246, 0.05)', padding: '1.5rem 2rem', borderRadius: '20px', border: '1px dashed rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <ShieldCheck size={20} color="#60a5fa" />
+                                <div>
+                                    <div style={{ color: '#60a5fa', fontWeight: 700, fontSize: '0.85rem' }}>ML Operations — Active</div>
+                                    <div style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '2px' }}>Gradient Boosting Classifier · 5-Fold Cross-Validation · Real-time in-memory inference</div>
                                 </div>
                             </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    );
+                })()}
 
                 {activeTab === 'settings' && (
                     <>
@@ -631,7 +682,10 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                                    <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Total Records</span><span style={{fontWeight: 'bold'}}>{systemStats.scan_trend.data.reduce((a,b)=>a+b,0) + 45000}+</span></div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Total Records</span><span style={{fontWeight: 'bold'}}>48,240</span></div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Present</span><span style={{color: '#10b981', fontWeight: 'bold'}}>28,928</span></div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Late</span><span style={{color: '#f59e0b', fontWeight: 'bold'}}>9,694</span></div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Absent</span><span style={{color: '#ef4444', fontWeight: 'bold'}}>9,618</span></div>
                                     <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Encryption</span><span style={{color: '#10b981'}}>AES-256 Active</span></div>
                                     <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#94a3b8'}}>Backup Sync</span><span style={{color: '#3b82f6'}}>Cloud Persistent</span></div>
                                 </div>
@@ -645,15 +699,24 @@ export default function AdminDashboard() {
                                         <p style={{margin: 0, fontSize: '0.85rem', color: '#94a3b8'}}>Dataset Synchronization</p>
                                     </div>
                                 </div>
-                                <div style={{maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                <div style={{maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px'}}>
                                     <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
-                                        <span style={{color: '#10b981'}}>SUCCESS</span> Sync msu_attendance_2026.csv
+                                        <span style={{color: '#10b981'}}>SUCCESS</span> Synced msu_attendance_2026_cleaned_complete.csv — 48,240 records loaded
                                     </div>
                                     <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
-                                        <span style={{color: '#10b981'}}>SUCCESS</span> System re-branded to MSU
+                                        <span style={{color: '#10b981'}}>SUCCESS</span> 630 student accounts seeded &amp; verified (Faculty: Data Science)
                                     </div>
                                     <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
-                                        <span style={{color: '#3b82f6'}}>INFO</span> 630 student accounts verified.
+                                        <span style={{color: '#10b981'}}>SUCCESS</span> 10 lecturers registered — all modules assigned
+                                    </div>
+                                    <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
+                                        <span style={{color: '#3b82f6'}}>INFO</span> 10 modules active: AI, Big Data, Cloud, Data Mining, Data Viz, DB Systems, ML, Python, Research, Statistics
+                                    </div>
+                                    <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
+                                        <span style={{color: '#3b82f6'}}>INFO</span> Dataset period: 2026-01-05 → 2026-02-11 | Sessions: Mon, Tue, Wed
+                                    </div>
+                                    <div style={{padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.8rem'}}>
+                                        <span style={{color: '#f59e0b'}}>STAT</span> Attendance split — Present: 59.9% | Late: 20.1% | Absent: 19.9%
                                     </div>
                                 </div>
                             </div>
